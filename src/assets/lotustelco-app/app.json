@@ -37,8 +37,7 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "USE_FULL_SCREEN_INTENT"
-      ],
-      "googleServicesFile": "./google-services.json"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -53,11 +52,9 @@
     ],
     "scheme": "lotustelco",
     "extra": {
-      "router": {},
       "eas": {
         "projectId": "9a223211-80ce-49d9-a312-70a816215ec3"
       }
-    },
-    "owner": "lotustelco"
+    }
   }
 }
