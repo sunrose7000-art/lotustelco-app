@@ -4,7 +4,7 @@ import {
   Image, KeyboardAvoidingView, Platform, ActivityIndicator,
   ScrollView, Alert
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+
 import { COLORS } from '../config/theme'
 
 const logo = require('../assets/logo.jpg')
@@ -32,7 +32,7 @@ export default function LoginScreen({ onLogin }: Props) {
 
   if (step === 'welcome') {
     return (
-      <LinearGradient colors={['#020912', '#041525', '#06213a']} style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.welcomeContent}>
           <View style={styles.logoContainer}>
             <Image source={logo} style={styles.logo} />
@@ -62,12 +62,12 @@ export default function LoginScreen({ onLogin }: Props) {
             <Text style={styles.createBtnText}>Create Account</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
     )
   }
 
   return (
-    <LinearGradient colors={['#020912', '#041525']} style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.loginScroll} keyboardShouldPersistTaps="handled">
           <TouchableOpacity onPress={() => setStep('welcome')} style={styles.backBtn}>
@@ -129,7 +129,7 @@ export default function LoginScreen({ onLogin }: Props) {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   )
 }
 

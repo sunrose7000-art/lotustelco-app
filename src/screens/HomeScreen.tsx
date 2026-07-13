@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+
 import { COLORS } from '../config/theme'
 
 const logo = require('../assets/logo.jpg')
@@ -12,9 +12,9 @@ const recentCalls = [
   { name: 'James Okonkwo', number: '+44 20 7946 0832', type: 'outgoing', time: 'Yesterday' },
 ]
 
-type Props = { onCall: (number: string) => void; username: string }
+type Props = { onCall: (number: string) => void; username: string; sipStatus?: string }
 
-export default function HomeScreen({ onCall, username }: Props) {
+export default function HomeScreen({ onCall, username, sipStatus }: Props) {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
@@ -29,11 +29,7 @@ export default function HomeScreen({ onCall, username }: Props) {
       </View>
 
       {/* Balance Card */}
-      <LinearGradient
-        colors={['#0a2440', '#071830']}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={styles.card}
-      >
+      <View>
         <View style={styles.cardGlow} />
         <View style={styles.cardHeader}>
           <Text style={styles.cardLabel}>Available Balance</Text>
@@ -44,7 +40,7 @@ export default function HomeScreen({ onCall, username }: Props) {
         </View>
         <Text style={styles.balance}>$24.80</Text>
         <Text style={styles.cardSub}>LotusTelco Account</Text>
-      </LinearGradient>
+      </View>
 
       {/* Quick Actions */}
       <View style={styles.actionsRow}>

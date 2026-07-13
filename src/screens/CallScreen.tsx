@@ -1,48 +1,56 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Vibration } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+import React, { useState } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { COLORS } from '../config/theme'
+import type { CallStatus } from '../hooks/useSIP'
 
 type Props = {
   number: string
   type: 'outgoing' | 'incoming'
+  callStatus: CallStatus
+  callDuration: number
+  muted: boolean
+  onHold: boolean
   onEnd: () => void
+  onAnswer: () => void
+  onToggleMute: () => void
+  onToggleHold: () => void
 }
 
-export default function CallScreen({ number, type, onEnd }: Props) {
-  const [connected, setConnected] = useState(type === 'outgoing')
-  const [muted, setMuted] = useState(false)
-  const [speaker, setSpeaker] = useState(false)
-  const [hold, setHold] = useState(false)
+export default function CallScreen({
+  number, type, callStatus, callDuration,
+  muted, onHold, onEnd, onAnswer, onToggleMute, onToggleHold
+}: Props) {
   const [keypad, setKeypad] = useState(false)
-  const [seconds, setSeconds] = useState(0)
+  const [speaker, setSpeaker] = useState(false)
   const [dtmf, setDtmf] = useState('')
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  useEffect(() => {
-    if (connected) {
-      timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000)
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [connected])
+  const connected = callStatus === 'connected'
+  const isIncoming = type === 'incoming' && callStatus === 'ringing'
 
   const fmt = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
-  const initials = number.replace(/\D/g, '').slice(-4, -2) || 'LT'
-  const isIncoming = type === 'incoming' && !connected
+  const initials = number?.replace(/\D/g, '').slice(-4, -2) || 'LT'
+
+  const statusText = () => {
+    switch(callStatus) {
+      case 'calling': return 'Calling...'
+      case 'ringing': return type === 'incoming' ? '📲 Incoming Call' : 'Ringing...'
+      case 'connected': return 'Connected'
+      case 'ended': return 'Call Ended'
+      default: return ''
+    }
+  }
 
   return (
-    <LinearGradient colors={['#020f1e', '#030e1b', '#04121f']} style={styles.container}>
+    <View style={styles.container}>
       {/* Status */}
       <View style={styles.statusRow}>
         {connected && <View style={styles.statusDot} />}
-        <Text style={styles.statusText}>
-          {isIncoming ? 'Incoming Call' : connected ? 'Connected' : 'Calling...'}
-        </Text>
+        <Text style={styles.statusText}>{statusText()}</Text>
       </View>
 
-      {/* Avatar */}
+      {/* Avatar with rings */}
       <View style={styles.avatarSection}>
         <View style={styles.ring3} />
         <View style={styles.ring2} />
@@ -54,10 +62,10 @@ export default function CallScreen({ number, type, onEnd }: Props) {
 
       <Text style={styles.callerName}>{number}</Text>
       {connected
-        ? <Text style={styles.timer}>{fmt(seconds)}</Text>
-        : <Text style={styles.ringing}>{isIncoming ? '📲 Ringing...' : 'Ringing...'}</Text>
+        ? <Text style={styles.timer}>{fmt(callDuration)}</Text>
+        : <Text style={styles.subText}>{statusText()}</Text>
       }
-      {hold && <Text style={styles.holdText}>⏸ Call on hold</Text>}
+      {onHold && <Text style={styles.holdText}>⏸ Call on hold</Text>}
 
       {/* DTMF Keypad */}
       {keypad && connected && (
@@ -77,10 +85,10 @@ export default function CallScreen({ number, type, onEnd }: Props) {
       {connected && !keypad && (
         <View style={styles.actions}>
           {[
-            { icon: muted ? '🚫🎤' : '🎤', label: muted ? 'Unmute' : 'Mute', active: muted, fn: () => setMuted(m => !m) },
+            { icon: muted ? '🚫🎤' : '🎤', label: muted ? 'Unmute' : 'Mute', active: muted, fn: onToggleMute },
             { icon: '🔊', label: 'Speaker', active: speaker, fn: () => setSpeaker(s => !s) },
             { icon: '⌨️', label: 'Keypad', active: keypad, fn: () => setKeypad(k => !k) },
-            { icon: '⏸', label: hold ? 'Resume' : 'Hold', active: hold, fn: () => setHold(h => !h) },
+            { icon: '⏸', label: onHold ? 'Resume' : 'Hold', active: onHold, fn: onToggleHold },
             { icon: '👥', label: 'Add Call', active: false, fn: () => {} },
             { icon: '↗️', label: 'Transfer', active: false, fn: () => {} },
           ].map(a => (
@@ -92,7 +100,7 @@ export default function CallScreen({ number, type, onEnd }: Props) {
         </View>
       )}
 
-      {/* Call buttons */}
+      {/* Call control buttons */}
       <View style={styles.bottomButtons}>
         {isIncoming ? (
           <View style={styles.incomingRow}>
@@ -103,7 +111,7 @@ export default function CallScreen({ number, type, onEnd }: Props) {
               <Text style={[styles.callBtnLabel, { color: 'rgba(255,68,102,0.8)' }]}>Decline</Text>
             </View>
             <View style={styles.callBtnGroup}>
-              <TouchableOpacity onPress={() => setConnected(true)} style={[styles.callBigBtn, { backgroundColor: COLORS.green, shadowColor: COLORS.green }]}>
+              <TouchableOpacity onPress={onAnswer} style={[styles.callBigBtn, { backgroundColor: COLORS.green, shadowColor: COLORS.green }]}>
                 <Text style={styles.callBtnIcon}>📞</Text>
               </TouchableOpacity>
               <Text style={[styles.callBtnLabel, { color: 'rgba(0,255,157,0.8)' }]}>Accept</Text>
@@ -115,12 +123,12 @@ export default function CallScreen({ number, type, onEnd }: Props) {
           </TouchableOpacity>
         )}
       </View>
-    </LinearGradient>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', paddingTop: 60 },
+  container: { flex: 1, backgroundColor: '#020f1e', alignItems: 'center', paddingTop: 60 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.cyan },
   statusText: { fontSize: 12, fontWeight: '600', color: COLORS.muted, textTransform: 'uppercase', letterSpacing: 2 },
@@ -132,7 +140,7 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 28, fontWeight: '700', color: COLORS.cyan },
   callerName: { fontSize: 22, fontWeight: '700', color: COLORS.foreground, marginBottom: 6 },
   timer: { fontSize: 20, fontWeight: '600', color: COLORS.cyan, letterSpacing: 4, marginBottom: 4 },
-  ringing: { fontSize: 14, color: COLORS.muted, marginBottom: 4 },
+  subText: { fontSize: 14, color: COLORS.muted, marginBottom: 4 },
   holdText: { fontSize: 13, color: COLORS.amber, fontWeight: '600', marginTop: 4 },
   dtmfContainer: { width: '90%', padding: 16, borderRadius: 20, backgroundColor: 'rgba(4,14,26,0.95)', borderWidth: 1, borderColor: 'rgba(0,229,255,0.15)', marginTop: 12 },
   dtmfDisplay: { fontSize: 20, color: COLORS.cyan, textAlign: 'center', marginBottom: 10, letterSpacing: 4 },

@@ -1,13 +1,14 @@
 export const SIP_CONFIG = {
-  domain: '65.21.41.12',
-  port: 5060,
+  domain: 'lotustelco.net',
+  server: '65.21.41.12',
   wsUri: 'wss://voice.lotustelco.net:8989/ws',
-  stunServers: ['stun:stun.l.google.com:19302'],
-}
-
-export const APP_CONFIG = {
-  name: 'LotusTelco',
-  version: '1.1.0',
-  supportEmail: 'support@lotustelco.net',
-  website: 'https://voice.lotustelco.net',
+  port: 5060,
+  usernameFormat: (user: string) => {
+    // Convert email format to SIP format if needed
+    // skumar@lotustelco.net -> skumar_lotustelco.net
+    if (user.includes('@')) {
+      return user.replace('@', '_')
+    }
+    return user
+  }
 }
