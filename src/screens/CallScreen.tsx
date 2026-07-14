@@ -1,17 +1,21 @@
 import React, { useState } from 'react'
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView
+  View, Text, TouchableOpacity, StyleSheet,
+  SafeAreaView, Dimensions
 } from 'react-native'
 import type { CallStatus } from '../hooks/useSIP'
+
+const { width, height } = Dimensions.get('window')
 
 const COLORS = {
   background: '#040e1a',
   cyan: '#00e5ff',
-  green: '#00ff9d',
-  red: '#ff3b30',
-  foreground: '#e8f4ff',
-  muted: 'rgba(184,210,240,0.5)',
-  amber: '#ffb347',
+  green: '#34C759',
+  red: '#FF3B30',
+  foreground: '#FFFFFF',
+  muted: 'rgba(255,255,255,0.5)',
+  amber: '#FF9500',
+  buttonBg: 'rgba(255,255,255,0.15)',
 }
 
 type Props = {
@@ -37,157 +41,133 @@ export default function CallScreen({
 
   const connected = callStatus === 'connected'
   const isIncoming = type === 'incoming' && callStatus === 'ringing'
+  const isOutgoing = !isIncoming
 
   const fmt = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
-  const initials = (number || 'LT')
-    .replace(/[^a-zA-Z]/g, ' ')
-    .trim()
-    .split(' ')
-    .filter(Boolean)
-    .map((w: string) => w[0].toUpperCase())
-    .join('')
-    .slice(0, 2) || number?.slice(0, 2) || 'LT'
+  const initials = number
+    ?.replace(/[^a-zA-Z0-9]/g, '')
+    .slice(0, 2)
+    .toUpperCase() || 'LT'
 
   const statusLabel = () => {
-    if (callStatus === 'calling') return 'Calling...'
-    if (callStatus === 'ringing') return isIncoming ? 'Incoming Call' : 'Ringing...'
-    if (callStatus === 'connected') return fmt(callDuration)
-    if (callStatus === 'ended') return 'Call Ended'
-    return ''
+    switch (callStatus) {
+      case 'calling': return 'Calling...'
+      case 'ringing': return isIncoming ? 'Incoming Call' : 'Ringing...'
+      case 'connected': return fmt(callDuration)
+      case 'ended': return 'Call Ended'
+      default: return ''
+    }
   }
 
-  // DTMF Keypad overlay
+  // DTMF Keypad full screen
   if (showKeypad) {
     return (
       <SafeAreaView style={styles.container}>
-        <TouchableOpacity onPress={() => setShowKeypad(false)} style={styles.backRow}>
-          <Text style={styles.backText}>← Hide Keypad</Text>
-        </TouchableOpacity>
-        <Text style={styles.dtmfDisplay}>{dtmf || ' '}</Text>
-        <View style={styles.keypad}>
-          {[
-            ['1','2','3'],
-            ['4','5','6'],
-            ['7','8','9'],
-            ['*','0','#'],
-          ].map((row, ri) => (
-            <View key={ri} style={styles.keyRow}>
+        <View style={styles.dtmfHeader}>
+          <TouchableOpacity onPress={() => setShowKeypad(false)} style={styles.dtmfBack}>
+            <Text style={styles.dtmfBackText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.dtmfDisplay}>{dtmf || ' '}</Text>
+        </View>
+        <View style={styles.dtmfKeypad}>
+          {[['1','2','3'],['4','5','6'],['7','8','9'],['*','0','#']].map((row, ri) => (
+            <View key={ri} style={styles.dtmfRow}>
               {row.map(k => (
-                <TouchableOpacity key={k} onPress={() => setDtmf(d => d + k)} style={styles.key}>
-                  <Text style={styles.keyNum}>{k}</Text>
+                <TouchableOpacity
+                  key={k}
+                  onPress={() => setDtmf(d => d + k)}
+                  style={styles.dtmfKey}
+                  activeOpacity={0.6}
+                >
+                  <Text style={styles.dtmfKeyText}>{k}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           ))}
         </View>
-        <TouchableOpacity onPress={onEnd} style={styles.endCallFull}>
-          <View style={styles.endCallBtn}>
-            <Text style={styles.endCallIcon}>📵</Text>
-          </View>
-        </TouchableOpacity>
+        <View style={styles.endCallCenter}>
+          <TouchableOpacity onPress={onEnd} style={styles.endCallBig} activeOpacity={0.8}>
+            <Text style={styles.endCallBigIcon}>📵</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     )
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top section - caller info */}
+      {/* Top - caller info */}
       <View style={styles.topSection}>
+        <Text style={styles.callStatusLabel}>{isIncoming ? 'INCOMING CALL' : connected ? 'ACTIVE CALL' : 'CALLING'}</Text>
+
         {/* Avatar */}
-        <View style={styles.avatarWrap}>
-          <View style={styles.avatar}>
+        <View style={styles.avatarOuter}>
+          <View style={styles.avatarInner}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
         </View>
 
         <Text style={styles.callerNumber}>{number}</Text>
-        <Text style={[
-          styles.callStatus,
-          connected && { color: COLORS.cyan }
-        ]}>
+        <Text style={[styles.callTimer, connected && { color: COLORS.cyan }]}>
           {statusLabel()}
         </Text>
-        {onHold && <Text style={styles.holdBadge}>Call on hold</Text>}
+        {onHold && (
+          <View style={styles.holdBadge}>
+            <Text style={styles.holdText}>⏸ ON HOLD</Text>
+          </View>
+        )}
       </View>
 
-      {/* Middle section - action buttons (only when connected) */}
+      {/* Middle - action buttons when connected */}
       {connected && (
         <View style={styles.actionsGrid}>
-          <TouchableOpacity
-            onPress={onToggleMute}
-            style={[styles.actionBtn, muted && styles.actionBtnActive]}
-          >
-            <Text style={styles.actionBtnIcon}>🎤</Text>
-            <Text style={[styles.actionBtnLabel, muted && { color: COLORS.cyan }]}>
-              {muted ? 'Unmute' : 'Mute'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setSpeaker(s => !s)}
-            style={[styles.actionBtn, speaker && styles.actionBtnActive]}
-          >
-            <Text style={styles.actionBtnIcon}>🔊</Text>
-            <Text style={[styles.actionBtnLabel, speaker && { color: COLORS.cyan }]}>
-              Speaker
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setShowKeypad(true)}
-            style={styles.actionBtn}
-          >
-            <Text style={styles.actionBtnIcon}>⌨️</Text>
-            <Text style={styles.actionBtnLabel}>Keypad</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={onToggleHold}
-            style={[styles.actionBtn, onHold && styles.actionBtnActive]}
-          >
-            <Text style={styles.actionBtnIcon}>⏸</Text>
-            <Text style={[styles.actionBtnLabel, onHold && { color: COLORS.cyan }]}>
-              {onHold ? 'Resume' : 'Hold'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn}>
-            <Text style={styles.actionBtnIcon}>👥</Text>
-            <Text style={styles.actionBtnLabel}>Add Call</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn}>
-            <Text style={styles.actionBtnIcon}>↗️</Text>
-            <Text style={styles.actionBtnLabel}>Transfer</Text>
-          </TouchableOpacity>
+          {[
+            { icon: '🎤', label: muted ? 'Unmute' : 'Mute', active: muted, fn: onToggleMute },
+            { icon: '🔊', label: 'Speaker', active: speaker, fn: () => setSpeaker(s => !s) },
+            { icon: '⌨️', label: 'Keypad', active: false, fn: () => setShowKeypad(true) },
+            { icon: '⏸', label: onHold ? 'Resume' : 'Hold', active: onHold, fn: onToggleHold },
+            { icon: '➕', label: 'Add', active: false, fn: () => {} },
+            { icon: '↗️', label: 'Transfer', active: false, fn: () => {} },
+          ].map(a => (
+            <TouchableOpacity
+              key={a.label}
+              onPress={a.fn}
+              style={[styles.actionBtn, a.active && styles.actionBtnActive]}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.actionIcon}>{a.icon}</Text>
+              <Text style={[styles.actionLabel, a.active && { color: COLORS.cyan }]}>{a.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
 
-      {/* Bottom section - call control */}
+      {/* Bottom - call buttons */}
       <View style={styles.bottomSection}>
         {isIncoming ? (
-          // Incoming call - decline + accept
-          <View style={styles.incomingButtons}>
-            <View style={styles.callBtnWrap}>
-              <TouchableOpacity onPress={onEnd} style={[styles.bigCallBtn, styles.declineBtn]}>
-                <Text style={styles.bigCallBtnIcon}>📵</Text>
+          <View style={styles.incomingRow}>
+            {/* Decline */}
+            <View style={styles.callBtnGroup}>
+              <TouchableOpacity onPress={onEnd} style={[styles.callCircleBtn, styles.declineCircle]} activeOpacity={0.8}>
+                <Text style={styles.callCircleIcon}>📵</Text>
               </TouchableOpacity>
-              <Text style={styles.callBtnLabel}>Decline</Text>
+              <Text style={[styles.callBtnLabel, { color: COLORS.red }]}>Decline</Text>
             </View>
-            <View style={styles.callBtnWrap}>
-              <TouchableOpacity onPress={onAnswer} style={[styles.bigCallBtn, styles.acceptBtn]}>
-                <Text style={styles.bigCallBtnIcon}>📞</Text>
+            {/* Accept */}
+            <View style={styles.callBtnGroup}>
+              <TouchableOpacity onPress={onAnswer} style={[styles.callCircleBtn, styles.acceptCircle]} activeOpacity={0.8}>
+                <Text style={styles.callCircleIcon}>📞</Text>
               </TouchableOpacity>
               <Text style={[styles.callBtnLabel, { color: COLORS.green }]}>Accept</Text>
             </View>
           </View>
         ) : (
-          // Outgoing/connected - single end call button centered
-          <View style={styles.endCallWrap}>
-            <TouchableOpacity onPress={onEnd} style={[styles.bigCallBtn, styles.declineBtn]}>
-              <Text style={styles.bigCallBtnIcon}>📵</Text>
+          // End call - big red circle centered
+          <View style={styles.endCallCenter}>
+            <TouchableOpacity onPress={onEnd} style={styles.endCallBig} activeOpacity={0.8}>
+              <Text style={styles.endCallBigIcon}>📵</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -202,109 +182,122 @@ const styles = StyleSheet.create({
     backgroundColor: '#040e1a',
   },
 
-  // Top section
+  // Top
   topSection: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 40,
+    paddingHorizontal: 24,
+    paddingTop: 20,
   },
-  avatarWrap: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(0,229,255,0.08)',
+  callStatusLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 2,
+    marginBottom: 32,
+  },
+  avatarOuter: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: 'rgba(0,229,255,0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(0,229,255,0.2)',
+    borderColor: 'rgba(0,229,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(0,229,255,0.15)',
+  avatarInner: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    backgroundColor: 'rgba(0,229,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 36,
-    fontWeight: '700',
+    fontSize: 40,
+    fontWeight: '300',
     color: COLORS.cyan,
   },
   callerNumber: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '300',
     color: COLORS.foreground,
-    marginBottom: 8,
+    marginBottom: 10,
     textAlign: 'center',
-    paddingHorizontal: 20,
-  },
-  callStatus: {
-    fontSize: 16,
-    color: COLORS.muted,
     letterSpacing: 1,
   },
+  callTimer: {
+    fontSize: 18,
+    fontWeight: '400',
+    color: 'rgba(255,255,255,0.55)',
+    letterSpacing: 2,
+  },
   holdBadge: {
-    marginTop: 8,
+    marginTop: 12,
     paddingHorizontal: 14,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,179,71,0.15)',
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,149,0,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,149,0,0.3)',
+  },
+  holdText: {
     color: COLORS.amber,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
 
-  // Action grid
+  // Actions grid
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 16,
+    justifyContent: 'center',
   },
   actionBtn: {
-    width: '30%',
-    aspectRatio: 1.1,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    width: (width - 48 - 24) / 3,
+    paddingVertical: 16,
+    borderRadius: 20,
+    backgroundColor: COLORS.buttonBg,
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 6,
   },
   actionBtnActive: {
-    backgroundColor: 'rgba(0,229,255,0.12)',
-    borderColor: 'rgba(0,229,255,0.25)',
+    backgroundColor: 'rgba(0,229,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,229,255,0.4)',
   },
-  actionBtnIcon: { fontSize: 24 },
-  actionBtnLabel: {
+  actionIcon: { fontSize: 22 },
+  actionLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: COLORS.muted,
+    color: 'rgba(255,255,255,0.6)',
   },
 
-  // Bottom buttons
+  // Bottom
   bottomSection: {
-    paddingBottom: 48,
+    paddingBottom: 52,
+    paddingTop: 16,
     alignItems: 'center',
   },
-  incomingButtons: {
+
+  // Incoming
+  incomingRow: {
     flexDirection: 'row',
-    gap: 80,
+    gap: 72,
     alignItems: 'center',
   },
-  callBtnWrap: {
+  callBtnGroup: {
     alignItems: 'center',
     gap: 10,
   },
-  endCallWrap: {
-    alignItems: 'center',
-  },
-  bigCallBtn: {
+  callCircleBtn: {
     width: 80,
     height: 80,
     borderRadius: 40,
@@ -312,79 +305,87 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     elevation: 8,
     shadowOpacity: 0.5,
-    shadowRadius: 16,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 4 },
   },
-  declineBtn: {
+  declineCircle: {
     backgroundColor: COLORS.red,
     shadowColor: COLORS.red,
   },
-  acceptBtn: {
+  acceptCircle: {
     backgroundColor: COLORS.green,
     shadowColor: COLORS.green,
   },
-  bigCallBtnIcon: { fontSize: 32 },
+  callCircleIcon: { fontSize: 30 },
   callBtnLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255,59,48,0.8)',
   },
 
-  // DTMF keypad
-  backRow: {
-    padding: 20,
-    paddingTop: 16,
-  },
-  backText: {
-    color: COLORS.cyan,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  dtmfDisplay: {
-    fontSize: 28,
-    color: COLORS.cyan,
-    textAlign: 'center',
-    letterSpacing: 6,
-    marginBottom: 24,
-    minHeight: 40,
-  },
-  keypad: {
-    paddingHorizontal: 32,
-    gap: 16,
-  },
-  keyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  key: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(0,229,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,229,255,0.12)',
+  // End call - big centered red button
+  endCallCenter: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  keyNum: {
-    fontSize: 28,
-    fontWeight: '400',
-    color: COLORS.foreground,
-  },
-  endCallFull: {
-    alignItems: 'center',
-    marginTop: 32,
-  },
-  endCallBtn: {
+  endCallBig: {
     width: 80,
     height: 80,
     borderRadius: 40,
     backgroundColor: COLORS.red,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
+    elevation: 12,
     shadowColor: COLORS.red,
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
+    shadowOpacity: 0.6,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 6 },
   },
-  endCallIcon: { fontSize: 32 },
+  endCallBigIcon: { fontSize: 32 },
+
+  // DTMF
+  dtmfHeader: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 12,
+    alignItems: 'center',
+  },
+  dtmfBack: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  dtmfBackText: {
+    color: COLORS.cyan,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  dtmfDisplay: {
+    fontSize: 32,
+    color: COLORS.cyan,
+    letterSpacing: 6,
+    minHeight: 44,
+    fontWeight: '300',
+  },
+  dtmfKeypad: {
+    flex: 1,
+    paddingHorizontal: 32,
+    justifyContent: 'center',
+    gap: 12,
+  },
+  dtmfRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dtmfKey: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.buttonBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dtmfKeyText: {
+    fontSize: 28,
+    fontWeight: '300',
+    color: COLORS.foreground,
+  },
 })

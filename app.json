@@ -11,12 +11,14 @@
       "resizeMode": "contain",
       "backgroundColor": "#040e1a"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.lotustelco.dialer",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "LotusTelco needs microphone access to make VoIP calls",
+        "NSMicrophoneUsageDescription": "LotusTelco needs microphone for VoIP calls",
         "NSCameraUsageDescription": "LotusTelco needs camera access for video calls"
       }
     },
@@ -42,6 +44,9 @@
       "eas": {
         "projectId": "9a223211-80ce-49d9-a312-70a816215ec3"
       }
-    }
+    },
+    "plugins": [
+      "@config-plugins/react-native-webrtc"
+    ]
   }
 }
