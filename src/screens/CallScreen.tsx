@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import type { CallStatus } from '../hooks/useSIP'
 
-const { width, height } = Dimensions.get('window')
+const { width } = Dimensions.get('window')
 
 const COLORS = {
   background: '#040e1a',
@@ -15,7 +15,39 @@ const COLORS = {
   foreground: '#FFFFFF',
   muted: 'rgba(255,255,255,0.5)',
   amber: '#FF9500',
-  buttonBg: 'rgba(255,255,255,0.15)',
+  buttonBg: 'rgba(255,255,255,0.12)',
+}
+
+// Simple phone icon SVGs as text replacements
+const PhoneOff = () => (
+  <View style={endCallIconStyle}>
+    <View style={[phoneBar, { transform: [{ rotate: '135deg' }], width: 28, top: 14 }]} />
+    <View style={phoneBase} />
+  </View>
+)
+
+const endCallIconStyle = {
+  width: 36,
+  height: 36,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+}
+const phoneBar = {
+  position: 'absolute' as const,
+  height: 4,
+  width: 24,
+  backgroundColor: '#fff',
+  borderRadius: 2,
+}
+const phoneBase = {
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  borderWidth: 4,
+  borderColor: '#fff',
+  borderTopWidth: 0,
+  borderLeftWidth: 0,
+  transform: [{ rotate: '45deg' }],
 }
 
 type Props = {
@@ -41,15 +73,11 @@ export default function CallScreen({
 
   const connected = callStatus === 'connected'
   const isIncoming = type === 'incoming' && callStatus === 'ringing'
-  const isOutgoing = !isIncoming
 
   const fmt = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
-  const initials = number
-    ?.replace(/[^a-zA-Z0-9]/g, '')
-    .slice(0, 2)
-    .toUpperCase() || 'LT'
+  const initials = (number || '').replace(/\D/g, '').slice(-4, -2) || 'LT'
 
   const statusLabel = () => {
     switch (callStatus) {
@@ -61,26 +89,18 @@ export default function CallScreen({
     }
   }
 
-  // DTMF Keypad full screen
   if (showKeypad) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.dtmfHeader}>
-          <TouchableOpacity onPress={() => setShowKeypad(false)} style={styles.dtmfBack}>
-            <Text style={styles.dtmfBackText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.dtmfDisplay}>{dtmf || ' '}</Text>
-        </View>
-        <View style={styles.dtmfKeypad}>
+        <TouchableOpacity onPress={() => setShowKeypad(false)} style={styles.backRow}>
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.dtmfDisplay}>{dtmf || ' '}</Text>
+        <View style={styles.dtmfGrid}>
           {[['1','2','3'],['4','5','6'],['7','8','9'],['*','0','#']].map((row, ri) => (
             <View key={ri} style={styles.dtmfRow}>
               {row.map(k => (
-                <TouchableOpacity
-                  key={k}
-                  onPress={() => setDtmf(d => d + k)}
-                  style={styles.dtmfKey}
-                  activeOpacity={0.6}
-                >
+                <TouchableOpacity key={k} onPress={() => setDtmf(d => d + k)} style={styles.dtmfKey}>
                   <Text style={styles.dtmfKeyText}>{k}</Text>
                 </TouchableOpacity>
               ))}
@@ -88,8 +108,8 @@ export default function CallScreen({
           ))}
         </View>
         <View style={styles.endCallCenter}>
-          <TouchableOpacity onPress={onEnd} style={styles.endCallBig} activeOpacity={0.8}>
-            <Text style={styles.endCallBigIcon}>📵</Text>
+          <TouchableOpacity onPress={onEnd} style={styles.endCallBtn} activeOpacity={0.8}>
+            <View style={styles.endCallInner} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -100,9 +120,10 @@ export default function CallScreen({
     <SafeAreaView style={styles.container}>
       {/* Top - caller info */}
       <View style={styles.topSection}>
-        <Text style={styles.callStatusLabel}>{isIncoming ? 'INCOMING CALL' : connected ? 'ACTIVE CALL' : 'CALLING'}</Text>
+        <Text style={styles.callStatusLabel}>
+          {isIncoming ? 'INCOMING CALL' : connected ? 'ACTIVE CALL' : 'CALLING'}
+        </Text>
 
-        {/* Avatar */}
         <View style={styles.avatarOuter}>
           <View style={styles.avatarInner}>
             <Text style={styles.avatarText}>{initials}</Text>
@@ -113,23 +134,24 @@ export default function CallScreen({
         <Text style={[styles.callTimer, connected && { color: COLORS.cyan }]}>
           {statusLabel()}
         </Text>
+
         {onHold && (
           <View style={styles.holdBadge}>
-            <Text style={styles.holdText}>⏸ ON HOLD</Text>
+            <Text style={styles.holdText}>ON HOLD</Text>
           </View>
         )}
       </View>
 
-      {/* Middle - action buttons when connected */}
+      {/* Action buttons when connected */}
       {connected && (
         <View style={styles.actionsGrid}>
           {[
-            { icon: '🎤', label: muted ? 'Unmute' : 'Mute', active: muted, fn: onToggleMute },
-            { icon: '🔊', label: 'Speaker', active: speaker, fn: () => setSpeaker(s => !s) },
-            { icon: '⌨️', label: 'Keypad', active: false, fn: () => setShowKeypad(true) },
-            { icon: '⏸', label: onHold ? 'Resume' : 'Hold', active: onHold, fn: onToggleHold },
-            { icon: '➕', label: 'Add', active: false, fn: () => {} },
-            { icon: '↗️', label: 'Transfer', active: false, fn: () => {} },
+            { label: muted ? 'Unmute' : 'Mute', active: muted, fn: onToggleMute, icon: muted ? '🚫' : '🎤' },
+            { label: 'Speaker', active: speaker, fn: () => setSpeaker(s => !s), icon: '🔊' },
+            { label: 'Keypad', active: false, fn: () => setShowKeypad(true), icon: '⌨️' },
+            { label: onHold ? 'Resume' : 'Hold', active: onHold, fn: onToggleHold, icon: '⏸' },
+            { label: 'Add', active: false, fn: () => {}, icon: '➕' },
+            { label: 'Transfer', active: false, fn: () => {}, icon: '↗️' },
           ].map(a => (
             <TouchableOpacity
               key={a.label}
@@ -148,26 +170,23 @@ export default function CallScreen({
       <View style={styles.bottomSection}>
         {isIncoming ? (
           <View style={styles.incomingRow}>
-            {/* Decline */}
-            <View style={styles.callBtnGroup}>
-              <TouchableOpacity onPress={onEnd} style={[styles.callCircleBtn, styles.declineCircle]} activeOpacity={0.8}>
-                <Text style={styles.callCircleIcon}>📵</Text>
+            <View style={styles.callBtnWrap}>
+              <TouchableOpacity onPress={onEnd} style={[styles.callCircle, styles.redCircle]} activeOpacity={0.8}>
+                <View style={styles.hangupIcon} />
               </TouchableOpacity>
               <Text style={[styles.callBtnLabel, { color: COLORS.red }]}>Decline</Text>
             </View>
-            {/* Accept */}
-            <View style={styles.callBtnGroup}>
-              <TouchableOpacity onPress={onAnswer} style={[styles.callCircleBtn, styles.acceptCircle]} activeOpacity={0.8}>
-                <Text style={styles.callCircleIcon}>📞</Text>
+            <View style={styles.callBtnWrap}>
+              <TouchableOpacity onPress={onAnswer} style={[styles.callCircle, styles.greenCircle]} activeOpacity={0.8}>
+                <Text style={{ fontSize: 28 }}>📞</Text>
               </TouchableOpacity>
               <Text style={[styles.callBtnLabel, { color: COLORS.green }]}>Accept</Text>
             </View>
           </View>
         ) : (
-          // End call - big red circle centered
           <View style={styles.endCallCenter}>
-            <TouchableOpacity onPress={onEnd} style={styles.endCallBig} activeOpacity={0.8}>
-              <Text style={styles.endCallBigIcon}>📵</Text>
+            <TouchableOpacity onPress={onEnd} style={[styles.callCircle, styles.redCircle]} activeOpacity={0.8}>
+              <View style={styles.hangupIcon} />
             </TouchableOpacity>
           </View>
         )}
@@ -176,24 +195,33 @@ export default function CallScreen({
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#040e1a',
-  },
+// Hangup icon — horizontal bar (like a phone receiver rotated)
+const HangupIcon = () => (
+  <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{
+      width: 28,
+      height: 5,
+      backgroundColor: '#fff',
+      borderRadius: 3,
+      transform: [{ rotate: '135deg' }],
+    }} />
+  </View>
+)
 
-  // Top
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.background },
+
   topSection: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
     paddingTop: 20,
+    paddingHorizontal: 24,
   },
   callStatusLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.4)',
+    color: 'rgba(255,255,255,0.35)',
     letterSpacing: 2,
     marginBottom: 32,
   },
@@ -216,13 +244,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    fontSize: 40,
-    fontWeight: '300',
-    color: COLORS.cyan,
-  },
+  avatarText: { fontSize: 40, fontWeight: '300', color: COLORS.cyan },
   callerNumber: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '300',
     color: COLORS.foreground,
     marginBottom: 10,
@@ -232,7 +256,7 @@ const styles = StyleSheet.create({
   callTimer: {
     fontSize: 18,
     fontWeight: '400',
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(255,255,255,0.5)',
     letterSpacing: 2,
   },
   holdBadge: {
@@ -244,24 +268,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,149,0,0.3)',
   },
-  holdText: {
-    color: COLORS.amber,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
+  holdText: { color: COLORS.amber, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
 
-  // Actions grid
+  // Action grid
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     gap: 12,
     marginBottom: 16,
     justifyContent: 'center',
   },
   actionBtn: {
-    width: (width - 48 - 24) / 3,
+    width: (width - 64) / 3,
     paddingVertical: 16,
     borderRadius: 20,
     backgroundColor: COLORS.buttonBg,
@@ -269,112 +288,63 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   actionBtnActive: {
-    backgroundColor: 'rgba(0,229,255,0.2)',
+    backgroundColor: 'rgba(0,229,255,0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(0,229,255,0.4)',
+    borderColor: 'rgba(0,229,255,0.3)',
   },
-  actionIcon: { fontSize: 22 },
-  actionLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
-  },
+  actionIcon: { fontSize: 24 },
+  actionLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.55)' },
 
-  // Bottom
+  // Bottom buttons
   bottomSection: {
     paddingBottom: 52,
     paddingTop: 16,
     alignItems: 'center',
   },
+  incomingRow: { flexDirection: 'row', gap: 72, alignItems: 'center' },
+  callBtnWrap: { alignItems: 'center', gap: 10 },
+  endCallCenter: { alignItems: 'center' },
 
-  // Incoming
-  incomingRow: {
-    flexDirection: 'row',
-    gap: 72,
-    alignItems: 'center',
-  },
-  callBtnGroup: {
-    alignItems: 'center',
-    gap: 10,
-  },
-  callCircleBtn: {
+  // Circle button
+  callCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
-    shadowOpacity: 0.5,
+    elevation: 10,
+    shadowOpacity: 0.6,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 4 },
   },
-  declineCircle: {
-    backgroundColor: COLORS.red,
-    shadowColor: COLORS.red,
-  },
-  acceptCircle: {
-    backgroundColor: COLORS.green,
-    shadowColor: COLORS.green,
-  },
-  callCircleIcon: { fontSize: 30 },
-  callBtnLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  redCircle: { backgroundColor: COLORS.red, shadowColor: COLORS.red },
+  greenCircle: { backgroundColor: COLORS.green, shadowColor: COLORS.green },
+  callBtnLabel: { fontSize: 13, fontWeight: '600' },
 
-  // End call - big centered red button
-  endCallCenter: {
-    alignItems: 'center',
+  // Hangup icon inside red button
+  hangupIcon: {
+    width: 36,
+    height: 6,
+    backgroundColor: '#fff',
+    borderRadius: 3,
+    transform: [{ rotate: '135deg' }],
   },
-  endCallBig: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.red,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 12,
-    shadowColor: COLORS.red,
-    shadowOpacity: 0.6,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 6 },
-  },
-  endCallBigIcon: { fontSize: 32 },
 
   // DTMF
-  dtmfHeader: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 12,
-    alignItems: 'center',
-  },
-  dtmfBack: {
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    marginBottom: 8,
-  },
-  dtmfBackText: {
-    color: COLORS.cyan,
-    fontSize: 15,
-    fontWeight: '500',
-  },
+  backRow: { padding: 20 },
+  backText: { color: COLORS.cyan, fontSize: 15, fontWeight: '500' },
   dtmfDisplay: {
     fontSize: 32,
     color: COLORS.cyan,
     letterSpacing: 6,
     minHeight: 44,
     fontWeight: '300',
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 24,
   },
-  dtmfKeypad: {
-    flex: 1,
-    paddingHorizontal: 32,
-    justifyContent: 'center',
-    gap: 12,
-  },
-  dtmfRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  dtmfGrid: { flex: 1, paddingHorizontal: 32, justifyContent: 'center', gap: 12 },
+  dtmfRow: { flexDirection: 'row', justifyContent: 'space-between' },
   dtmfKey: {
     width: 80,
     height: 80,
@@ -383,9 +353,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dtmfKeyText: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: COLORS.foreground,
+  dtmfKeyText: { fontSize: 28, fontWeight: '300', color: COLORS.foreground },
+  endCallBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 10,
+    shadowColor: COLORS.red,
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+  },
+  endCallInner: {
+    width: 36,
+    height: 6,
+    backgroundColor: '#fff',
+    borderRadius: 3,
+    transform: [{ rotate: '135deg' }],
   },
 })
